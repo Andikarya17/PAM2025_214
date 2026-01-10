@@ -1,6 +1,7 @@
 package com.example.bengkelku.data.repository
 
 import com.example.bengkelku.data.local.dao.BookingDao
+import com.example.bengkelku.data.local.dao.BookingWithDetails
 import com.example.bengkelku.data.local.entity.Booking
 import kotlinx.coroutines.flow.Flow
 
@@ -30,8 +31,18 @@ class RepositoryBooking(
         return bookingDao.getRiwayatBooking(penggunaId)
     }
 
-    // Admin
+    // Admin - semua booking
     fun getSemuaBooking(): Flow<List<Booking>> {
         return bookingDao.getAllBooking()
+    }
+
+    // Admin - semua booking dengan detail
+    fun getSemuaBookingWithDetails(): Flow<List<BookingWithDetails>> {
+        return bookingDao.getAllBookingWithDetails()
+    }
+
+    // Get booking by ID
+    suspend fun getBookingById(bookingId: Int): Booking? {
+        return bookingDao.getBookingById(bookingId)
     }
 }

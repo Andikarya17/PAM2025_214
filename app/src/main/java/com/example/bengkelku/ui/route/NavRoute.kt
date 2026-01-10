@@ -10,4 +10,10 @@ object NavRoute {
     const val KENDARAAN = "kendaraan"
     const val TAMBAH_KENDARAAN = "tambah_kendaraan"
 
+    const val BOOKING = "booking"
+    const val BUAT_BOOKING = "buat_booking"
+
+    // Admin Management
+    const val KELOLA_SERVIS = "kelola_servis"
+    const val KELOLA_SLOT_SERVIS = "kelola_slot_servis"
 }

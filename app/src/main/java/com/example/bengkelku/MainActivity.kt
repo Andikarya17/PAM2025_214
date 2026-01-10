@@ -13,6 +13,7 @@ import com.example.bengkelku.viewmodel.auth.RegisterViewModel
 import com.example.bengkelku.viewmodel.dashboard.DashboardAdminViewModel
 import com.example.bengkelku.viewmodel.dashboard.DashboardPelangganViewModel
 
+
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -20,12 +21,13 @@ class MainActivity : ComponentActivity() {
 
         val containerApp = ContainerApp(applicationContext)
 
-        // Contoh: penggunaId hasil login (sementara dummy)
+        // penggunaId akan diupdate setelah login
         val penggunaId = 1
 
         val factoryAdmin = ViewModelFactory(containerApp)
         val factoryUser = ViewModelFactory(containerApp, penggunaId)
 
+        // Global ViewModels only
         val loginViewModel = ViewModelProvider(this, factoryAdmin)
             .get(LoginViewModel::class.java)
 
@@ -41,13 +43,14 @@ class MainActivity : ComponentActivity() {
         setContent {
             BengkelKuTheme {
                 NavGraph(
+                    containerApp = containerApp,
                     loginViewModel = loginViewModel,
                     registerViewModel = registerViewModel,
                     dashboardAdminViewModel = dashboardAdminViewModel,
-                    dashboardPelangganViewModel = dashboardPelangganViewModel
+                    dashboardPelangganViewModel = dashboardPelangganViewModel,
+                    penggunaId = penggunaId
                 )
             }
         }
     }
 }
-

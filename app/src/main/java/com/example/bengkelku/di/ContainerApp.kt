@@ -6,6 +6,7 @@ import com.example.bengkelku.data.repository.RepositoryAuth
 import com.example.bengkelku.data.repository.RepositoryBooking
 import com.example.bengkelku.data.repository.RepositoryKendaraan
 import com.example.bengkelku.data.repository.RepositoryServis
+import com.example.bengkelku.data.repository.RepositorySlotServis
 
 class ContainerApp(context: Context) {
 
@@ -24,6 +25,10 @@ class ContainerApp(context: Context) {
 
     val repositoryServis: RepositoryServis by lazy {
         RepositoryServis(database.servisDao())
+    }
+
+    val repositorySlotServis: RepositorySlotServis by lazy {
+        RepositorySlotServis(database.slotServisDao())
     }
 
     val repositoryBooking: RepositoryBooking by lazy {

@@ -8,46 +8,48 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.bengkelku.data.local.entity.Kendaraan
+import com.example.bengkelku.ui.view.components.BaseScaffold
 import com.example.bengkelku.viewmodel.kendaraan.KendaraanViewModel
 
 @Composable
 fun KendaraanScreen(
     viewModel: KendaraanViewModel,
-    onTambahKendaraan: () -> Unit
+    onTambahKendaraan: () -> Unit,
+    onBack: () -> Unit
 ) {
     val daftarKendaraan by viewModel.daftarKendaraan.collectAsState(initial = emptyList())
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-
-        Text(
-            text = "Kendaraan Saya",
-            style = MaterialTheme.typography.headlineSmall
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        Button(
-            onClick = onTambahKendaraan,
-            modifier = Modifier.fillMaxWidth()
+    BaseScaffold(
+        title = "Kendaraan Saya",
+        showBack = true,
+        onBack = onBack
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp)
         ) {
-            Text("Tambah Kendaraan")
-        }
+            Button(
+                onClick = onTambahKendaraan,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Tambah Kendaraan")
+            }
 
-        Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
-        LazyColumn {
-            items(daftarKendaraan) { kendaraan ->
-                KendaraanItem(
-                    kendaraan = kendaraan,
-                    onHapus = {
-                        viewModel.hapusKendaraan(kendaraan)
-                    }
-                )
+            LazyColumn {
+                items(daftarKendaraan) { kendaraan ->
+                    KendaraanItem(
+                        kendaraan = kendaraan,
+                        onHapus = {
+                            viewModel.hapusKendaraan(kendaraan)
+                        }
+                    )
+                }
             }
         }
     }
 }
+

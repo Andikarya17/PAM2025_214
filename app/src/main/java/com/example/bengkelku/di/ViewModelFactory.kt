@@ -8,6 +8,8 @@ import com.example.bengkelku.viewmodel.booking.BookingViewModel
 import com.example.bengkelku.viewmodel.dashboard.DashboardAdminViewModel
 import com.example.bengkelku.viewmodel.dashboard.DashboardPelangganViewModel
 import com.example.bengkelku.viewmodel.kendaraan.KendaraanViewModel
+import com.example.bengkelku.viewmodel.servis.ServisAdminViewModel
+import com.example.bengkelku.viewmodel.slotservis.SlotServisViewModel
 
 class ViewModelFactory(
     private val containerApp: ContainerApp,
@@ -60,7 +62,21 @@ class ViewModelFactory(
                 }
                 BookingViewModel(
                     penggunaId,
-                    containerApp.repositoryBooking
+                    containerApp.repositoryBooking,
+                    containerApp.repositoryServis,
+                    containerApp.repositorySlotServis
+                ) as T
+            }
+
+            modelClass.isAssignableFrom(ServisAdminViewModel::class.java) -> {
+                ServisAdminViewModel(
+                    containerApp.repositoryServis
+                ) as T
+            }
+
+            modelClass.isAssignableFrom(SlotServisViewModel::class.java) -> {
+                SlotServisViewModel(
+                    containerApp.repositorySlotServis
                 ) as T
             }
 

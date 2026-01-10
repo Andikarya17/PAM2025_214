@@ -9,11 +9,13 @@ import com.example.bengkelku.data.local.dao.BookingDao
 import com.example.bengkelku.data.local.dao.KendaraanDao
 import com.example.bengkelku.data.local.dao.PenggunaDao
 import com.example.bengkelku.data.local.dao.ServisDao
+import com.example.bengkelku.data.local.dao.SlotServisDao
 import com.example.bengkelku.data.local.entity.Booking
 import com.example.bengkelku.data.local.entity.Kendaraan
 import com.example.bengkelku.data.local.entity.Pengguna
 import com.example.bengkelku.data.local.entity.RolePengguna
 import com.example.bengkelku.data.local.entity.Servis
+import com.example.bengkelku.data.local.entity.SlotServis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -23,9 +25,10 @@ import kotlinx.coroutines.launch
         Pengguna::class,
         Kendaraan::class,
         Servis::class,
+        SlotServis::class,
         Booking::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class DatabaseBengkelKu : RoomDatabase() {
@@ -33,6 +36,7 @@ abstract class DatabaseBengkelKu : RoomDatabase() {
     abstract fun penggunaDao(): PenggunaDao
     abstract fun kendaraanDao(): KendaraanDao
     abstract fun servisDao(): ServisDao
+    abstract fun slotServisDao(): SlotServisDao
     abstract fun bookingDao(): BookingDao
 
     companion object {
@@ -52,6 +56,7 @@ abstract class DatabaseBengkelKu : RoomDatabase() {
                 "bengkelku_database"
             )
                 .addCallback(DatabaseCallback())
+                .fallbackToDestructiveMigration()
                 .build()
         }
     }

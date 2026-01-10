@@ -25,12 +25,19 @@ import androidx.room.PrimaryKey
             parentColumns = ["id"],
             childColumns = ["servisId"],
             onDelete = ForeignKey.RESTRICT
+        ),
+        ForeignKey(
+            entity = SlotServis::class,
+            parentColumns = ["id"],
+            childColumns = ["slotServisId"],
+            onDelete = ForeignKey.RESTRICT
         )
     ],
     indices = [
         Index("penggunaId"),
         Index("kendaraanId"),
-        Index("servisId")
+        Index("servisId"),
+        Index("slotServisId")
     ]
 )
 data class Booking(
@@ -43,6 +50,8 @@ data class Booking(
     val kendaraanId: Int,     // Kendaraan yang diservis
 
     val servisId: Int,        // Jenis servis
+
+    val slotServisId: Int,    // Slot waktu servis
 
     val tanggalServis: String, // Format: yyyy-MM-dd
 

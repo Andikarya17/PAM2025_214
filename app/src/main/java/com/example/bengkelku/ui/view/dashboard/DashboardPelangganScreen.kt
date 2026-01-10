@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.bengkelku.data.local.entity.Booking
 import com.example.bengkelku.data.local.entity.Kendaraan
+import com.example.bengkelku.ui.view.components.BaseScaffold
 import com.example.bengkelku.viewmodel.dashboard.DashboardPelangganViewModel
 
 @Composable
@@ -20,62 +21,60 @@ fun DashboardPelangganScreen(
     val kendaraanSaya by viewModel.kendaraanSaya.collectAsState()
     val bookingAktif by viewModel.bookingAktif.collectAsState()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-
-        Text(
-            text = "Dashboard Pelanggan",
-            style = MaterialTheme.typography.headlineSmall
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        Button(
-            onClick = onKelolaKendaraan,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Kelola Kendaraan")
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        Button(
-            onClick = onBuatBooking,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Buat Booking Servis")
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        Text("Kendaraan Saya", style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(8.dp))
-
-        LazyColumn(
+    BaseScaffold(
+        title = "Dashboard Pelanggan",
+        showBack = false
+    ) { paddingValues ->
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp)
         ) {
-            items(kendaraanSaya) { kendaraan ->
-                KendaraanItemPelanggan(kendaraan)
+            Button(
+                onClick = onKelolaKendaraan,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Kelola Kendaraan")
             }
-        }
 
-        Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(8.dp))
 
-        Text("Booking Aktif", style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = onBuatBooking,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Buat Booking Servis")
+            }
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-        ) {
-            items(bookingAktif) { booking ->
-                BookingItemPelanggan(booking)
+            Spacer(Modifier.height(16.dp))
+
+            Text("Kendaraan Saya", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(8.dp))
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            ) {
+                items(kendaraanSaya) { kendaraan ->
+                    KendaraanItemPelanggan(kendaraan)
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            Text("Booking Aktif", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(8.dp))
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            ) {
+                items(bookingAktif) { booking ->
+                    BookingItemPelanggan(booking)
+                }
             }
         }
     }
