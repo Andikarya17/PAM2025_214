@@ -63,29 +63,30 @@ abstract class DatabaseBengkelKu : RoomDatabase() {
 
     /**
      * Callback untuk seeding data awal (ADMIN)
+     * Menggunakan onOpen agar admin selalu di-seed jika belum ada,
+     * termasuk setelah destructive migration.
      */
     private class DatabaseCallback : RoomDatabase.Callback() {
 
-        override fun onCreate(db: SupportSQLiteDatabase) {
-            super.onCreate(db)
+        override fun onOpen(db: SupportSQLiteDatabase) {
+            super.onOpen(db)
 
-            // Jalankan di background thread
-            CoroutineScope(Dispatchers.IO).launch {
-                INSTANCE?.penggunaDao()?.let { penggunaDao ->
+            // Cek apakah admin sudah ada
+            val cursor = db.query("SELECT COUNT(*) FROM pengguna WHERE role = 'ADMIN'")
+            var adminCount = 0
+            if (cursor.moveToFirst()) {
+                adminCount = cursor.getInt(0)
+            }
+            cursor.close()
 
-                    val jumlahAdmin = penggunaDao.jumlahAdmin()
-
-                    if (jumlahAdmin == 0) {
-                        val admin = Pengguna(
-                            nama = "Administrator",
-                            username = "admin",
-                            password = "admin",
-                            role = RolePengguna.ADMIN
-                        )
-                        penggunaDao.insert(admin)
-                    }
-                }
+            // Insert admin jika belum ada
+            if (adminCount == 0) {
+                db.execSQL("""
+                    INSERT INTO pengguna (nama, username, password, role)
+                    VALUES ('Administrator', 'admin', 'admin', 'ADMIN')
+                """)
             }
         }
     }
+
 }

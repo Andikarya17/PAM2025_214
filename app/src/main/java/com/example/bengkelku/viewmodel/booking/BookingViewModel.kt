@@ -51,12 +51,21 @@ class BookingViewModel(
 
     fun buatBooking(booking: Booking) {
         viewModelScope.launch {
+
+            val slotAda = repositorySlotServis.getSlotById(booking.slotServisId)
+
+            if (slotAda == null) {
+                // Jangan insert booking invalid
+                return@launch
+            }
+
             repositoryBooking.buatBooking(booking)
-            // Increment slot terpakai
             repositorySlotServis.incrementTerpakai(booking.slotServisId)
             _aksiState.value = AksiBookingState.Berhasil
         }
     }
+
+
 
     fun resetState() {
         _aksiState.value = AksiBookingState.Idle
