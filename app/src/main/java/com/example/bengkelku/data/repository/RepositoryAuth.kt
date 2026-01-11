@@ -3,24 +3,18 @@ package com.example.bengkelku.data.repository
 import com.example.bengkelku.data.local.dao.PenggunaDao
 import com.example.bengkelku.data.local.entity.Pengguna
 import com.example.bengkelku.data.local.entity.RolePengguna
+import com.example.bengkelku.data.remote.ApiResponse
+import com.example.bengkelku.data.remote.ApiService
+import com.example.bengkelku.data.remote.model.LoginResponse
+import com.example.bengkelku.data.remote.model.PenggunaResponse
 
-/**
- * Repository untuk autentikasi:
- * - Login admin & pelanggan
- * - Register pelanggan
- *
- * Catatan:
- * - Admin TIDAK bisa register
- * - Admin sudah di-seed di database saat pertama kali install
- */
 class RepositoryAuth(
-    private val penggunaDao: PenggunaDao
+    private val penggunaDao: PenggunaDao,
+    private val apiService: ApiService
 ) {
 
-    /**
-     * Login untuk semua role.
-     * Mengembalikan Pengguna jika sukses, null jika gagal.
-     */
+    // ===== LOCAL (Room) =====
+
     suspend fun login(
         username: String,
         password: String
@@ -28,18 +22,11 @@ class RepositoryAuth(
         return penggunaDao.login(username, password)
     }
 
-    /**
-     * Register hanya untuk pelanggan.
-     * Return:
-     * - true  -> register berhasil
-     * - false -> username sudah dipakai / role tidak valid
-     */
     suspend fun register(
         nama: String,
         username: String,
         password: String
     ): Boolean {
-        // Cegah register admin (aturan bisnis)
         val penggunaBaru = Pengguna(
             nama = nama,
             username = username,
@@ -51,16 +38,28 @@ class RepositoryAuth(
             penggunaDao.insert(penggunaBaru)
             true
         } catch (e: Exception) {
-            // Biasanya karena username duplikat (unique constraint)
             false
         }
     }
 
-    /**
-     * Helper untuk cek apakah pengguna adalah admin.
-     * Dipakai di ViewModel / Navigation.
-     */
     fun isAdmin(pengguna: Pengguna): Boolean {
         return pengguna.role == RolePengguna.ADMIN
+    }
+
+    // ===== REMOTE (API) =====
+
+    suspend fun loginApi(
+        username: String,
+        password: String
+    ): ApiResponse<LoginResponse> {
+        return apiService.login(username, password)
+    }
+
+    suspend fun registerApi(
+        nama: String,
+        username: String,
+        password: String
+    ): ApiResponse<PenggunaResponse> {
+        return apiService.register(nama, username, password)
     }
 }

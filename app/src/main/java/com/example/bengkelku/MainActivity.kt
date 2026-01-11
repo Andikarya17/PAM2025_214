@@ -3,6 +3,10 @@ package com.example.bengkelku
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModelProvider
 import com.example.bengkelku.di.ContainerApp
 import com.example.bengkelku.di.ViewModelFactory
@@ -21,13 +25,9 @@ class MainActivity : ComponentActivity() {
 
         val containerApp = ContainerApp(applicationContext)
 
-        // penggunaId akan diupdate setelah login
-        val penggunaId = 1
-
         val factoryAdmin = ViewModelFactory(containerApp)
-        val factoryUser = ViewModelFactory(containerApp, penggunaId)
 
-        // Global ViewModels only
+        // Global ViewModels (tidak perlu penggunaId)
         val loginViewModel = ViewModelProvider(this, factoryAdmin)
             .get(LoginViewModel::class.java)
 
@@ -37,18 +37,37 @@ class MainActivity : ComponentActivity() {
         val dashboardAdminViewModel = ViewModelProvider(this, factoryAdmin)
             .get(DashboardAdminViewModel::class.java)
 
-        val dashboardPelangganViewModel = ViewModelProvider(this, factoryUser)
-            .get(DashboardPelangganViewModel::class.java)
-
         setContent {
             BengkelKuTheme {
+                // NULLABLE - null means not logged in, NEVER use 0
+                var loggedInPenggunaId: Int? by remember { mutableStateOf(null) }
+
+                // DashboardPelangganViewModel only created when logged in
+                val dashboardPelangganViewModel = remember(loggedInPenggunaId) {
+                    loggedInPenggunaId?.let { id ->
+                        DashboardPelangganViewModel(
+                            id,
+                            containerApp.repositoryBooking,
+                            containerApp.repositoryKendaraan
+                        )
+                    }
+                }
+
                 NavGraph(
                     containerApp = containerApp,
                     loginViewModel = loginViewModel,
                     registerViewModel = registerViewModel,
                     dashboardAdminViewModel = dashboardAdminViewModel,
                     dashboardPelangganViewModel = dashboardPelangganViewModel,
-                    penggunaId = penggunaId
+                    penggunaId = loggedInPenggunaId,
+                    onLoginSuccess = { penggunaId ->
+                        // Set actual logged in user ID
+                        loggedInPenggunaId = penggunaId
+                    },
+                    onLogout = {
+                        // Clear session
+                        loggedInPenggunaId = null
+                    }
                 )
             }
         }

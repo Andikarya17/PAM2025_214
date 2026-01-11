@@ -2,11 +2,17 @@ package com.example.bengkelku.data.repository
 
 import com.example.bengkelku.data.local.dao.SlotServisDao
 import com.example.bengkelku.data.local.entity.SlotServis
+import com.example.bengkelku.data.remote.ApiResponse
+import com.example.bengkelku.data.remote.ApiService
+import com.example.bengkelku.data.remote.model.SlotServisResponse
 import kotlinx.coroutines.flow.Flow
 
 class RepositorySlotServis(
-    private val slotServisDao: SlotServisDao
+    private val slotServisDao: SlotServisDao,
+    private val apiService: ApiService
 ) {
+
+    // ===== LOCAL (Room) =====
 
     fun getAllSlots(): Flow<List<SlotServis>> {
         return slotServisDao.getAllSlots()
@@ -55,5 +61,38 @@ class RepositorySlotServis(
 
     suspend fun decrementTerpakai(slotId: Int) {
         slotServisDao.decrementTerpakai(slotId)
+    }
+
+    // ===== REMOTE (API) =====
+
+    suspend fun getAllSlotsApi(): ApiResponse<List<SlotServisResponse>> {
+        return apiService.getAllSlots()
+    }
+
+    suspend fun getAvailableSlotsApi(tanggal: String): ApiResponse<List<SlotServisResponse>> {
+        return apiService.getAvailableSlots(tanggal)
+    }
+
+    suspend fun createSlotApi(
+        tanggal: String,
+        jamMulai: String,
+        jamSelesai: String,
+        kapasitas: Int
+    ): ApiResponse<SlotServisResponse> {
+        return apiService.createSlot(tanggal, jamMulai, jamSelesai, kapasitas)
+    }
+
+    suspend fun updateSlotApi(
+        id: Int,
+        tanggal: String,
+        jamMulai: String,
+        jamSelesai: String,
+        kapasitas: Int
+    ): ApiResponse<SlotServisResponse> {
+        return apiService.updateSlot(id, tanggal, jamMulai, jamSelesai, kapasitas)
+    }
+
+    suspend fun deleteSlotApi(id: Int): ApiResponse<Unit> {
+        return apiService.deleteSlot(id)
     }
 }

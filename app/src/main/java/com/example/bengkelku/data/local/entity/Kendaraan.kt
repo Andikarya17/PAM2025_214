@@ -17,7 +17,8 @@ import androidx.room.PrimaryKey
     ],
     indices = [
         Index("penggunaId"),
-        Index(value = ["nomorPlat"], unique = true)
+        // UNIQUE per customer, not global
+        Index(value = ["penggunaId", "nomorPlat"], unique = true)
     ]
 )
 data class Kendaraan(

@@ -21,6 +21,22 @@ class KendaraanViewModel(
 
     fun tambahKendaraan(kendaraan: Kendaraan) {
         viewModelScope.launch {
+            // Block if penggunaId invalid
+            if (kendaraan.penggunaId <= 0) {
+                _aksiState.value = AksiKendaraanState.Gagal("Sesi login tidak valid")
+                return@launch
+            }
+
+            // Check duplicate per customer
+            val sudahAda = repositoryKendaraan.isNomorPlatExistsForPengguna(
+                kendaraan.penggunaId,
+                kendaraan.nomorPlat
+            )
+            if (sudahAda) {
+                _aksiState.value = AksiKendaraanState.Gagal("Nomor plat sudah terdaftar untuk akun Anda")
+                return@launch
+            }
+
             repositoryKendaraan.tambahKendaraan(kendaraan)
             _aksiState.value = AksiKendaraanState.Berhasil
         }
@@ -48,4 +64,5 @@ class KendaraanViewModel(
 sealed class AksiKendaraanState {
     object Idle : AksiKendaraanState()
     object Berhasil : AksiKendaraanState()
+    data class Gagal(val pesan: String) : AksiKendaraanState()
 }

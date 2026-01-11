@@ -9,6 +9,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.bengkelku.ui.view.components.BaseScaffold
 import com.example.bengkelku.viewmodel.booking.BookingViewModel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 @Composable
 fun BookingScreen(
@@ -16,8 +18,12 @@ fun BookingScreen(
     onBuatBooking: () -> Unit,
     onBack: () -> Unit
 ) {
-    val bookingAktif by viewModel.bookingAktif.collectAsState(initial = emptyList())
-    val riwayatBooking by viewModel.riwayatBooking.collectAsState(initial = emptyList())
+    // Safely handle nullable Flow - use empty flow as fallback
+    val bookingAktifFlow = viewModel.bookingAktif ?: flowOf(emptyList())
+    val riwayatBookingFlow = viewModel.riwayatBooking ?: flowOf(emptyList())
+
+    val bookingAktif by bookingAktifFlow.collectAsState(initial = emptyList())
+    val riwayatBooking by riwayatBookingFlow.collectAsState(initial = emptyList())
 
     var tabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("Aktif", "Riwayat")
@@ -73,4 +79,3 @@ fun BookingScreen(
         }
     }
 }
-

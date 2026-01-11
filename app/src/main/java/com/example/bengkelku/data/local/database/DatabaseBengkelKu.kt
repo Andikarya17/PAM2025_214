@@ -28,7 +28,7 @@ import kotlinx.coroutines.launch
         SlotServis::class,
         Booking::class
     ],
-    version = 2,
+    version = 3,  // Incremented for schema change: UNIQUE(penggunaId, nomorPlat)
     exportSchema = false
 )
 abstract class DatabaseBengkelKu : RoomDatabase() {

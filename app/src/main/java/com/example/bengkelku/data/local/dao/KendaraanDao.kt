@@ -33,4 +33,11 @@ interface KendaraanDao {
         LIMIT 1
     """)
     suspend fun getById(id: Int): Kendaraan?
+
+    // Check duplicate per customer (not global)
+    @Query("""
+        SELECT COUNT(*) FROM kendaraan
+        WHERE penggunaId = :penggunaId AND nomorPlat = :nomorPlat
+    """)
+    suspend fun countByPenggunaAndNomorPlat(penggunaId: Int, nomorPlat: String): Int
 }

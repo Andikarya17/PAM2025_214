@@ -13,6 +13,7 @@ import com.example.bengkelku.data.local.entity.Servis
 import com.example.bengkelku.data.local.entity.SlotServis
 import com.example.bengkelku.data.local.entity.StatusBooking
 import com.example.bengkelku.ui.view.components.BaseScaffold
+import com.example.bengkelku.viewmodel.booking.AksiBookingState
 import com.example.bengkelku.viewmodel.booking.BookingViewModel
 import com.example.bengkelku.viewmodel.kendaraan.KendaraanViewModel
 import java.text.NumberFormat
@@ -34,6 +35,8 @@ fun BuatBookingScreen(
     val daftarServis by bookingViewModel.daftarServis.collectAsState()
     // Collect daftar slot tersedia
     val daftarSlot by bookingViewModel.daftarSlot.collectAsState()
+    // Collect aksi state
+    val aksiState by bookingViewModel.aksiState.collectAsState()
 
     // State untuk dropdown dan form
     var selectedKendaraan by remember { mutableStateOf<Kendaraan?>(null) }
@@ -42,6 +45,23 @@ fun BuatBookingScreen(
     var expandedKendaraan by remember { mutableStateOf(false) }
     var expandedServis by remember { mutableStateOf(false) }
     var expandedSlot by remember { mutableStateOf(false) }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Handle state changes
+    LaunchedEffect(aksiState) {
+        when (val state = aksiState) {
+            is AksiBookingState.Berhasil -> {
+                bookingViewModel.resetState()
+                onSelesai()
+            }
+            is AksiBookingState.Gagal -> {
+                snackbarHostState.showSnackbar(state.pesan)
+                bookingViewModel.resetState()
+            }
+            else -> {}
+        }
+    }
 
     // Format harga
     val currencyFormat = remember { NumberFormat.getCurrencyInstance(Locale("id", "ID")) }
@@ -63,12 +83,16 @@ fun BuatBookingScreen(
         showBack = true,
         onBack = onBack
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp)
-        ) {
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) }
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(innerPadding)
+                    .padding(16.dp)
+            ) {
             // === DROPDOWN PILIH KENDARAAN ===
             ExposedDropdownMenuBox(
                 expanded = expandedKendaraan,
@@ -300,7 +324,7 @@ fun BuatBookingScreen(
                                 )
 
                                 bookingViewModel.buatBooking(booking)
-                                onSelesai()
+                                // Navigation handled by LaunchedEffect on aksiState
                             }
                         }
                     }
@@ -309,6 +333,7 @@ fun BuatBookingScreen(
                 enabled = isFormValid
             ) {
                 Text("Simpan Booking")
+            }
             }
         }
     }

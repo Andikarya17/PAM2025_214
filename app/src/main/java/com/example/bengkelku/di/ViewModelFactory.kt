@@ -13,7 +13,7 @@ import com.example.bengkelku.viewmodel.slotservis.SlotServisViewModel
 
 class ViewModelFactory(
     private val containerApp: ContainerApp,
-    private val penggunaId: Int? = null
+    private val penggunaId: Int? = null  // NULLABLE - null means not logged in
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
@@ -57,9 +57,7 @@ class ViewModelFactory(
             }
 
             modelClass.isAssignableFrom(BookingViewModel::class.java) -> {
-                requireNotNull(penggunaId) {
-                    "penggunaId wajib untuk BookingViewModel"
-                }
+                // Pass nullable penggunaId - ViewModel will handle null case
                 BookingViewModel(
                     penggunaId,
                     containerApp.repositoryBooking,

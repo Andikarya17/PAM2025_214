@@ -1,7 +1,13 @@
 package com.example.bengkelku.ui.route
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -36,12 +42,20 @@ fun NavGraph(
     loginViewModel: LoginViewModel,
     registerViewModel: RegisterViewModel,
     dashboardAdminViewModel: DashboardAdminViewModel,
-    dashboardPelangganViewModel: DashboardPelangganViewModel,
-    penggunaId: Int
+    dashboardPelangganViewModel: DashboardPelangganViewModel?,
+    penggunaId: Int?,  // NULLABLE - null means not logged in
+    onLoginSuccess: (penggunaId: Int) -> Unit,
+    onLogout: () -> Unit
 ) {
     // Feature-specific factories
     val factoryAdmin = remember { ViewModelFactory(containerApp) }
-    val factoryUser = remember { ViewModelFactory(containerApp, penggunaId) }
+    
+    // Factory untuk user - only created when penggunaId is valid
+    val factoryUser = remember(penggunaId) {
+        penggunaId?.let { id ->
+            ViewModelFactory(containerApp, id)
+        }
+    }
 
     NavHost(
         navController = navController,
@@ -52,7 +66,10 @@ fun NavGraph(
         composable(NavRoute.LOGIN) {
             LoginScreen(
                 viewModel = loginViewModel,
-                onLoginSuccess = { _, isAdmin ->
+                onLoginSuccess = { loggedInPenggunaId, isAdmin ->
+                    // Update penggunaId via callback ke MainActivity
+                    onLoginSuccess(loggedInPenggunaId)
+                    
                     if (isAdmin) {
                         navController.navigate(NavRoute.DASHBOARD_ADMIN) {
                             popUpTo(NavRoute.LOGIN) { inclusive = true }
@@ -115,6 +132,15 @@ fun NavGraph(
 
         // ===== DASHBOARD PELANGGAN =====
         composable(NavRoute.DASHBOARD_PELANGGAN) {
+            // BLOCK: Must be logged in
+            if (penggunaId == null || dashboardPelangganViewModel == null) {
+                // Redirect to login
+                navController.navigate(NavRoute.LOGIN) {
+                    popUpTo(0) { inclusive = true }
+                }
+                return@composable
+            }
+
             DashboardPelangganScreen(
                 viewModel = dashboardPelangganViewModel,
                 onKelolaKendaraan = {
@@ -126,7 +152,16 @@ fun NavGraph(
             )
         }
 
+        // ===== KENDARAAN =====
         composable(NavRoute.KENDARAAN) {
+            // BLOCK: Must be logged in
+            if (penggunaId == null || factoryUser == null) {
+                navController.navigate(NavRoute.LOGIN) {
+                    popUpTo(0) { inclusive = true }
+                }
+                return@composable
+            }
+
             val kendaraanViewModel: KendaraanViewModel = viewModel(factory = factoryUser)
             KendaraanScreen(
                 viewModel = kendaraanViewModel,
@@ -139,8 +174,16 @@ fun NavGraph(
             )
         }
 
-
+        // ===== TAMBAH KENDARAAN =====
         composable(NavRoute.TAMBAH_KENDARAAN) {
+            // BLOCK: Must be logged in
+            if (penggunaId == null || factoryUser == null) {
+                navController.navigate(NavRoute.LOGIN) {
+                    popUpTo(0) { inclusive = true }
+                }
+                return@composable
+            }
+
             val kendaraanViewModel: KendaraanViewModel = viewModel(factory = factoryUser)
             TambahKendaraanScreen(
                 viewModel = kendaraanViewModel,
@@ -150,7 +193,16 @@ fun NavGraph(
             )
         }
 
+        // ===== BOOKING =====
         composable(NavRoute.BOOKING) {
+            // BLOCK: Must be logged in
+            if (penggunaId == null || factoryUser == null) {
+                navController.navigate(NavRoute.LOGIN) {
+                    popUpTo(0) { inclusive = true }
+                }
+                return@composable
+            }
+
             val bookingViewModel: BookingViewModel = viewModel(factory = factoryUser)
             BookingScreen(
                 viewModel = bookingViewModel,
@@ -161,7 +213,16 @@ fun NavGraph(
             )
         }
 
+        // ===== BUAT BOOKING =====
         composable(NavRoute.BUAT_BOOKING) {
+            // BLOCK: Must be logged in
+            if (penggunaId == null || factoryUser == null) {
+                navController.navigate(NavRoute.LOGIN) {
+                    popUpTo(0) { inclusive = true }
+                }
+                return@composable
+            }
+
             val bookingViewModel: BookingViewModel = viewModel(factory = factoryUser)
             val kendaraanViewModel: KendaraanViewModel = viewModel(factory = factoryUser)
             BuatBookingScreen(
@@ -172,7 +233,6 @@ fun NavGraph(
                 onBack = { navController.popBackStack() }
             )
         }
-
 
     }
 }

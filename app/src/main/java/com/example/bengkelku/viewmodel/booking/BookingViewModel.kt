@@ -16,17 +16,20 @@ import java.util.Date
 import java.util.Locale
 
 class BookingViewModel(
-    private val penggunaId: Int,
+    private val penggunaId: Int?,  // NULLABLE - null means not logged in
     private val repositoryBooking: RepositoryBooking,
     private val repositoryServis: RepositoryServis,
     private val repositorySlotServis: RepositorySlotServis
 ) : ViewModel() {
 
-    val bookingAktif = repositoryBooking
-        .getBookingAktifPengguna(penggunaId)
+    // Only load if penggunaId is valid
+    val bookingAktif = penggunaId?.let { id ->
+        repositoryBooking.getBookingAktifPengguna(id)
+    }
 
-    val riwayatBooking = repositoryBooking
-        .getRiwayatBookingPengguna(penggunaId)
+    val riwayatBooking = penggunaId?.let { id ->
+        repositoryBooking.getRiwayatBookingPengguna(id)
+    }
 
     // Daftar servis aktif untuk customer
     val daftarServis = repositoryServis
@@ -51,21 +54,49 @@ class BookingViewModel(
 
     fun buatBooking(booking: Booking) {
         viewModelScope.launch {
-
-            val slotAda = repositorySlotServis.getSlotById(booking.slotServisId)
-
-            if (slotAda == null) {
-                // Jangan insert booking invalid
+            // BLOCK: penggunaId must not be null
+            if (penggunaId == null) {
+                _aksiState.value = AksiBookingState.Gagal("Sesi login tidak valid. Silakan login ulang.")
                 return@launch
             }
 
+            // BLOCK: booking.penggunaId must match and be valid
+            if (booking.penggunaId != penggunaId || booking.penggunaId <= 0) {
+                _aksiState.value = AksiBookingState.Gagal("Data pengguna tidak valid")
+                return@launch
+            }
+
+            // BLOCK: kendaraanId must be valid
+            if (booking.kendaraanId <= 0) {
+                _aksiState.value = AksiBookingState.Gagal("Pilih kendaraan terlebih dahulu")
+                return@launch
+            }
+
+            // BLOCK: servisId must be valid
+            if (booking.servisId <= 0) {
+                _aksiState.value = AksiBookingState.Gagal("Pilih jenis servis terlebih dahulu")
+                return@launch
+            }
+
+            // BLOCK: slotServisId must exist
+            val slotAda = repositorySlotServis.getSlotById(booking.slotServisId)
+            if (slotAda == null) {
+                _aksiState.value = AksiBookingState.Gagal("Slot waktu tidak valid")
+                return@launch
+            }
+
+            // BLOCK: slot must have capacity
+            if (slotAda.terpakai >= slotAda.kapasitas) {
+                _aksiState.value = AksiBookingState.Gagal("Slot waktu sudah penuh")
+                return@launch
+            }
+
+            // All validations passed - safe to insert
             repositoryBooking.buatBooking(booking)
             repositorySlotServis.incrementTerpakai(booking.slotServisId)
             _aksiState.value = AksiBookingState.Berhasil
         }
     }
-
-
 
     fun resetState() {
         _aksiState.value = AksiBookingState.Idle
@@ -75,4 +106,5 @@ class BookingViewModel(
 sealed class AksiBookingState {
     object Idle : AksiBookingState()
     object Berhasil : AksiBookingState()
+    data class Gagal(val pesan: String) : AksiBookingState()
 }
