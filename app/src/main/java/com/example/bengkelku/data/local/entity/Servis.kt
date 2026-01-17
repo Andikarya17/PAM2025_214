@@ -3,11 +3,15 @@ package com.example.bengkelku.data.local.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+/**
+ * Servis entity - stores service types from backend
+ * PrimaryKey is from backend (not autoGenerate)
+ */
 @Entity(tableName = "servis")
 data class Servis(
 
-    @PrimaryKey(autoGenerate = true)
-    val id: Int = 0,
+    @PrimaryKey
+    val id: Int,  // From backend, not autoGenerate
 
     val namaServis: String,
 
@@ -15,5 +19,5 @@ data class Servis(
 
     val deskripsi: String? = null,
 
-    val aktif: Boolean = true
+    val isActive: Boolean = true
 )

@@ -14,9 +14,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.example.bengkelku.data.local.entity.Servis
+import com.example.bengkelku.data.remote.model.ServisResponse
 import com.example.bengkelku.ui.view.components.BaseScaffold
 import com.example.bengkelku.viewmodel.servis.AksiServisState
+import com.example.bengkelku.viewmodel.servis.ListServisState
 import com.example.bengkelku.viewmodel.servis.ServisAdminViewModel
 import java.text.NumberFormat
 import java.util.*
@@ -26,22 +27,28 @@ fun KelolaServisScreen(
     viewModel: ServisAdminViewModel,
     onBack: () -> Unit
 ) {
-    val semuaServis by viewModel.semuaServis.collectAsState()
+    val listState by viewModel.listState.collectAsState()
     val aksiState by viewModel.aksiState.collectAsState()
     val servisUntukEdit by viewModel.servisUntukEdit.collectAsState()
 
     var showTambahDialog by remember { mutableStateOf(false) }
-    var showHapusDialog by remember { mutableStateOf<Servis?>(null) }
+    var showHapusDialog by remember { mutableStateOf<ServisResponse?>(null) }
 
     val snackbarHostState = remember { SnackbarHostState() }
+    val isLoading = aksiState is AksiServisState.Loading
 
+    // ✅ FIX: Close dialogs AFTER success/failure state
     LaunchedEffect(aksiState) {
         when (val state = aksiState) {
             is AksiServisState.Berhasil -> {
+                // Close dialogs on success
+                showTambahDialog = false
+                showHapusDialog = null
                 snackbarHostState.showSnackbar(state.pesan)
                 viewModel.resetState()
             }
             is AksiServisState.Gagal -> {
+                // Keep dialog open on failure so user can retry
                 snackbarHostState.showSnackbar(state.pesan)
                 viewModel.resetState()
             }
@@ -58,27 +65,79 @@ fun KelolaServisScreen(
             snackbarHost = { SnackbarHost(snackbarHostState) },
             floatingActionButton = {
                 FloatingActionButton(
-                    onClick = { showTambahDialog = true }
+                    onClick = { showTambahDialog = true },
+                    containerColor = MaterialTheme.colorScheme.primary
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Tambah Servis")
                 }
             }
         ) { innerPadding ->
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(innerPadding)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(semuaServis) { servis ->
-                    ServisItemCard(
-                        servis = servis,
-                        onEdit = { viewModel.pilihUntukEdit(servis) },
-                        onHapus = { showHapusDialog = servis },
-                        onToggleAktif = { viewModel.toggleAktif(servis) }
-                    )
+            when (val state = listState) {
+                is ListServisState.Loading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .padding(innerPadding),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+                is ListServisState.Success -> {
+                    if (state.data.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(paddingValues)
+                                .padding(innerPadding),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Belum ada servis",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(paddingValues)
+                                .padding(innerPadding)
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(state.data, key = { it.id }) { servis ->
+                                ServisItemCard(
+                                    servis = servis,
+                                    onEdit = { viewModel.pilihUntukEdit(servis) },
+                                    onHapus = { showHapusDialog = servis },
+                                    isLoading = isLoading
+                                )
+                            }
+                        }
+                    }
+                }
+                is ListServisState.Error -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .padding(innerPadding),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = state.message,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Button(onClick = { viewModel.loadServis() }) {
+                            Text("Coba Lagi")
+                        }
+                    }
                 }
             }
         }
@@ -88,11 +147,14 @@ fun KelolaServisScreen(
     if (showTambahDialog) {
         ServisFormDialog(
             title = "Tambah Servis",
-            onDismiss = { showTambahDialog = false },
+            onDismiss = { 
+                if (!isLoading) showTambahDialog = false 
+            },
             onSimpan = { nama, harga, deskripsi ->
+                // ✅ FIX: Don't close dialog here - wait for success state
                 viewModel.tambahServis(nama, harga, deskripsi)
-                showTambahDialog = false
-            }
+            },
+            isLoading = isLoading
         )
     }
 
@@ -103,37 +165,53 @@ fun KelolaServisScreen(
             initialNama = servis.namaServis,
             initialHarga = servis.harga.toString(),
             initialDeskripsi = servis.deskripsi ?: "",
-            onDismiss = { viewModel.batalEdit() },
+            onDismiss = { 
+                if (!isLoading) viewModel.batalEdit() 
+            },
             onSimpan = { nama, harga, deskripsi ->
+                // ✅ FIX: Don't close dialog here - wait for success state
                 viewModel.updateServis(
-                    servis.copy(
-                        namaServis = nama,
-                        harga = harga,
-                        deskripsi = deskripsi
-                    )
+                    id = servis.id,
+                    namaServis = nama,
+                    harga = harga,
+                    deskripsi = deskripsi
                 )
-            }
+            },
+            isLoading = isLoading
         )
     }
 
     // Dialog Konfirmasi Hapus
     showHapusDialog?.let { servis ->
         AlertDialog(
-            onDismissRequest = { showHapusDialog = null },
+            onDismissRequest = { 
+                if (!isLoading) showHapusDialog = null 
+            },
             title = { Text("Hapus Servis") },
             text = { Text("Yakin ingin menghapus servis \"${servis.namaServis}\"?") },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.hapusServis(servis)
-                        showHapusDialog = null
-                    }
+                        // ✅ FIX: Don't close dialog here - wait for success state
+                        viewModel.hapusServis(servis.id)
+                    },
+                    enabled = !isLoading
                 ) {
-                    Text("Hapus", color = MaterialTheme.colorScheme.error)
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Hapus", color = MaterialTheme.colorScheme.error)
+                    }
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showHapusDialog = null }) {
+                TextButton(
+                    onClick = { showHapusDialog = null },
+                    enabled = !isLoading
+                ) {
                     Text("Batal")
                 }
             }
@@ -143,10 +221,10 @@ fun KelolaServisScreen(
 
 @Composable
 private fun ServisItemCard(
-    servis: Servis,
+    servis: ServisResponse,
     onEdit: () -> Unit,
     onHapus: () -> Unit,
-    onToggleAktif: () -> Unit
+    isLoading: Boolean
 ) {
     val currencyFormat = remember { NumberFormat.getCurrencyInstance(Locale("id", "ID")) }
 
@@ -183,10 +261,10 @@ private fun ServisItemCard(
                 }
 
                 Row {
-                    IconButton(onClick = onEdit) {
+                    IconButton(onClick = onEdit, enabled = !isLoading) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit")
                     }
-                    IconButton(onClick = onHapus) {
+                    IconButton(onClick = onHapus, enabled = !isLoading) {
                         Icon(
                             Icons.Default.Delete,
                             contentDescription = "Hapus",
@@ -198,21 +276,22 @@ private fun ServisItemCard(
 
             Spacer(Modifier.height(8.dp))
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically
+            // Status indicator
+            Surface(
+                color = if (servis.isActive)
+                    MaterialTheme.colorScheme.primaryContainer
+                else
+                    MaterialTheme.colorScheme.errorContainer,
+                shape = MaterialTheme.shapes.small
             ) {
                 Text(
-                    text = if (servis.aktif) "Aktif" else "Nonaktif",
+                    text = if (servis.isActive) "Aktif" else "Nonaktif",
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (servis.aktif)
-                        MaterialTheme.colorScheme.primary
+                    color = if (servis.isActive)
+                        MaterialTheme.colorScheme.onPrimaryContainer
                     else
-                        MaterialTheme.colorScheme.error
-                )
-                Spacer(Modifier.width(8.dp))
-                Switch(
-                    checked = servis.aktif,
-                    onCheckedChange = { onToggleAktif() }
+                        MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                 )
             }
         }
@@ -226,7 +305,8 @@ private fun ServisFormDialog(
     initialHarga: String = "",
     initialDeskripsi: String = "",
     onDismiss: () -> Unit,
-    onSimpan: (nama: String, harga: Int, deskripsi: String?) -> Unit
+    onSimpan: (nama: String, harga: Int, deskripsi: String?) -> Unit,
+    isLoading: Boolean = false
 ) {
     var nama by remember { mutableStateOf(initialNama) }
     var harga by remember { mutableStateOf(initialHarga) }
@@ -254,7 +334,8 @@ private fun ServisFormDialog(
                         { Text("Nama servis wajib diisi") }
                     } else null,
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    enabled = !isLoading
                 )
 
                 OutlinedTextField(
@@ -270,7 +351,8 @@ private fun ServisFormDialog(
                     } else null,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    enabled = !isLoading
                 )
 
                 OutlinedTextField(
@@ -278,7 +360,8 @@ private fun ServisFormDialog(
                     onValueChange = { deskripsi = it },
                     label = { Text("Deskripsi (opsional)") },
                     modifier = Modifier.fillMaxWidth(),
-                    maxLines = 3
+                    maxLines = 3,
+                    enabled = !isLoading
                 )
             }
         },
@@ -295,13 +378,18 @@ private fun ServisFormDialog(
                             deskripsi.trim().ifBlank { null }
                         )
                     }
-                }
+                },
+                enabled = !isLoading
             ) {
-                Text("Simpan")
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                } else {
+                    Text("Simpan")
+                }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, enabled = !isLoading) {
                 Text("Batal")
             }
         }

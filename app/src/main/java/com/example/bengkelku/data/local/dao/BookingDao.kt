@@ -3,6 +3,7 @@ package com.example.bengkelku.data.local.dao
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.example.bengkelku.data.local.entity.Booking
@@ -25,7 +26,7 @@ data class BookingWithDetails(
     val hargaServis: Int,
     val tanggalServis: String,
     val jamServis: String,
-    val nomorAntrian: String,
+    val nomorAntrian: Int,
     val status: StatusBooking,
     val totalBiaya: Int
 )
@@ -33,14 +34,20 @@ data class BookingWithDetails(
 @Dao
 interface BookingDao {
 
-    @Insert
-    suspend fun insert(booking: Booking)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(booking: Booking)
+    
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(bookingList: List<Booking>)
 
     @Update
     suspend fun update(booking: Booking)
 
     @Delete
     suspend fun delete(booking: Booking)
+    
+    @Query("DELETE FROM booking WHERE id = :id")
+    suspend fun deleteById(id: Int)
 
     // Booking aktif pelanggan
     @Query("""
@@ -55,10 +62,18 @@ interface BookingDao {
     @Query("""
         SELECT * FROM booking
         WHERE penggunaId = :penggunaId
-          AND status IN ('SELESAI', 'DIAMBIL')
+          AND status IN ('SELESAI', 'DIBATALKAN')
         ORDER BY tanggalServis DESC
     """)
     fun getRiwayatBooking(penggunaId: Int): Flow<List<Booking>>
+    
+    // All bookings for a customer
+    @Query("""
+        SELECT * FROM booking
+        WHERE penggunaId = :penggunaId
+        ORDER BY tanggalServis DESC, jamServis DESC
+    """)
+    fun getBookingByPengguna(penggunaId: Int): Flow<List<Booking>>
 
     // Semua booking (Admin)
     @Query("""
@@ -96,4 +111,8 @@ interface BookingDao {
     // Get booking by ID
     @Query("SELECT * FROM booking WHERE id = :bookingId")
     suspend fun getBookingById(bookingId: Int): Booking?
+    
+    // Clear all bookings (for sync)
+    @Query("DELETE FROM booking")
+    suspend fun deleteAll()
 }

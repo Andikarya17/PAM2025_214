@@ -4,17 +4,17 @@ import com.google.gson.annotations.SerializedName
 
 data class ServisResponse(
     @SerializedName("id")
-    val id: Int,
+    val id: Int = 0,
 
     @SerializedName("nama_servis")
-    val namaServis: String,
+    val namaServis: String = "",
 
     @SerializedName("harga")
-    val harga: Int,
+    val harga: Int = 0,
 
     @SerializedName("deskripsi")
-    val deskripsi: String?,
+    val deskripsi: String? = null,
 
-    @SerializedName("aktif")
-    val aktif: Boolean
+    @SerializedName("is_active")
+    val isActive: Boolean = true
 )

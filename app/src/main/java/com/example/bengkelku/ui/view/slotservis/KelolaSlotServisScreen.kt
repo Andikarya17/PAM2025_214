@@ -20,9 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.example.bengkelku.data.local.entity.SlotServis
+import com.example.bengkelku.data.remote.model.SlotServisResponse
 import com.example.bengkelku.ui.view.components.BaseScaffold
 import com.example.bengkelku.viewmodel.slotservis.AksiSlotState
+import com.example.bengkelku.viewmodel.slotservis.ListSlotState
 import com.example.bengkelku.viewmodel.slotservis.SlotServisViewModel
 import java.util.Calendar
 
@@ -31,22 +32,28 @@ fun KelolaSlotServisScreen(
     viewModel: SlotServisViewModel,
     onBack: () -> Unit
 ) {
-    val semuaSlot by viewModel.semuaSlot.collectAsState()
+    val listState by viewModel.listState.collectAsState()
     val aksiState by viewModel.aksiState.collectAsState()
     val slotUntukEdit by viewModel.slotUntukEdit.collectAsState()
 
     var showTambahDialog by remember { mutableStateOf(false) }
-    var showHapusDialog by remember { mutableStateOf<SlotServis?>(null) }
+    var showHapusDialog by remember { mutableStateOf<SlotServisResponse?>(null) }
 
     val snackbarHostState = remember { SnackbarHostState() }
+    val isLoading = aksiState is AksiSlotState.Loading
 
+    // ✅ FIX: Close dialogs AFTER success/failure state
     LaunchedEffect(aksiState) {
         when (val state = aksiState) {
             is AksiSlotState.Berhasil -> {
+                // Close dialogs on success
+                showTambahDialog = false
+                showHapusDialog = null
                 snackbarHostState.showSnackbar(state.pesan)
                 viewModel.resetState()
             }
             is AksiSlotState.Gagal -> {
+                // Keep dialog open on failure so user can retry
                 snackbarHostState.showSnackbar(state.pesan)
                 viewModel.resetState()
             }
@@ -63,41 +70,78 @@ fun KelolaSlotServisScreen(
             snackbarHost = { SnackbarHost(snackbarHostState) },
             floatingActionButton = {
                 FloatingActionButton(
-                    onClick = { showTambahDialog = true }
+                    onClick = { showTambahDialog = true },
+                    containerColor = MaterialTheme.colorScheme.primary
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Tambah Slot")
                 }
             }
         ) { innerPadding ->
-            if (semuaSlot.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(innerPadding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Belum ada slot servis",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+            when (val state = listState) {
+                is ListSlotState.Loading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .padding(innerPadding),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .padding(innerPadding)
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(semuaSlot, key = { it.id }) { slot ->
-                        SlotServisItemCard(
-                            slot = slot,
-                            onEdit = { viewModel.pilihUntukEdit(slot) },
-                            onHapus = { showHapusDialog = slot }
+                is ListSlotState.Success -> {
+                    if (state.data.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(paddingValues)
+                                .padding(innerPadding),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Belum ada slot servis",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(paddingValues)
+                                .padding(innerPadding)
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(state.data, key = { it.id }) { slot ->
+                                SlotServisItemCard(
+                                    slot = slot,
+                                    onEdit = { viewModel.pilihUntukEdit(slot) },
+                                    onHapus = { showHapusDialog = slot },
+                                    isLoading = isLoading
+                                )
+                            }
+                        }
+                    }
+                }
+                is ListSlotState.Error -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                            .padding(innerPadding),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = state.message,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error
                         )
+                        Spacer(Modifier.height(16.dp))
+                        Button(onClick = { viewModel.loadSlots() }) {
+                            Text("Coba Lagi")
+                        }
                     }
                 }
             }
@@ -108,11 +152,14 @@ fun KelolaSlotServisScreen(
     if (showTambahDialog) {
         SlotFormDialog(
             title = "Tambah Slot",
-            onDismiss = { showTambahDialog = false },
+            onDismiss = { 
+                if (!isLoading) showTambahDialog = false 
+            },
             onSimpan = { tanggal, jamMulai, jamSelesai, kapasitas ->
+                // ✅ FIX: Don't close dialog here - wait for success state
                 viewModel.tambahSlot(tanggal, jamMulai, jamSelesai, kapasitas)
-                showTambahDialog = false
-            }
+            },
+            isLoading = isLoading
         )
     }
 
@@ -124,24 +171,29 @@ fun KelolaSlotServisScreen(
             initialJamMulai = slot.jamMulai,
             initialJamSelesai = slot.jamSelesai,
             initialKapasitas = slot.kapasitas.toString(),
-            onDismiss = { viewModel.batalEdit() },
+            onDismiss = { 
+                if (!isLoading) viewModel.batalEdit() 
+            },
             onSimpan = { tanggal, jamMulai, jamSelesai, kapasitas ->
+                // ✅ FIX: Don't close dialog here - wait for success state
                 viewModel.updateSlot(
-                    slot.copy(
-                        tanggal = tanggal,
-                        jamMulai = jamMulai,
-                        jamSelesai = jamSelesai,
-                        kapasitas = kapasitas
-                    )
+                    id = slot.id,
+                    tanggal = tanggal,
+                    jamMulai = jamMulai,
+                    jamSelesai = jamSelesai,
+                    kapasitas = kapasitas
                 )
-            }
+            },
+            isLoading = isLoading
         )
     }
 
     // Dialog Konfirmasi Hapus
     showHapusDialog?.let { slot ->
         AlertDialog(
-            onDismissRequest = { showHapusDialog = null },
+            onDismissRequest = { 
+                if (!isLoading) showHapusDialog = null 
+            },
             title = { Text("Hapus Slot") },
             text = {
                 Text("Yakin ingin menghapus slot tanggal ${slot.tanggal} (${slot.jamMulai} - ${slot.jamSelesai})?")
@@ -149,15 +201,26 @@ fun KelolaSlotServisScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.hapusSlot(slot)
-                        showHapusDialog = null
-                    }
+                        // ✅ FIX: Don't close dialog here - wait for success state
+                        viewModel.hapusSlot(slot.id)
+                    },
+                    enabled = !isLoading
                 ) {
-                    Text("Hapus", color = MaterialTheme.colorScheme.error)
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Hapus", color = MaterialTheme.colorScheme.error)
+                    }
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showHapusDialog = null }) {
+                TextButton(
+                    onClick = { showHapusDialog = null },
+                    enabled = !isLoading
+                ) {
                     Text("Batal")
                 }
             }
@@ -167,9 +230,10 @@ fun KelolaSlotServisScreen(
 
 @Composable
 private fun SlotServisItemCard(
-    slot: SlotServis,
+    slot: SlotServisResponse,
     onEdit: () -> Unit,
-    onHapus: () -> Unit
+    onHapus: () -> Unit,
+    isLoading: Boolean
 ) {
     val sisaSlot = slot.kapasitas - slot.terpakai
     val isAktif = sisaSlot > 0
@@ -186,29 +250,21 @@ private fun SlotServisItemCard(
                 verticalAlignment = Alignment.Top
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    // Tanggal
                     Text(
                         text = slot.tanggal,
                         style = MaterialTheme.typography.titleMedium
                     )
-
-                    // Jam mulai - jam selesai
                     Text(
                         text = "${slot.jamMulai} – ${slot.jamSelesai}",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.primary
                     )
-
                     Spacer(Modifier.height(4.dp))
-
-                    // Kapasitas total
                     Text(
                         text = "Kapasitas: ${slot.kapasitas}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-
-                    // Sisa slot
                     Text(
                         text = "Sisa: $sisaSlot",
                         style = MaterialTheme.typography.bodyMedium,
@@ -220,10 +276,10 @@ private fun SlotServisItemCard(
                 }
 
                 Row {
-                    IconButton(onClick = onEdit) {
+                    IconButton(onClick = onEdit, enabled = !isLoading) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit")
                     }
-                    IconButton(onClick = onHapus) {
+                    IconButton(onClick = onHapus, enabled = !isLoading) {
                         Icon(
                             Icons.Default.Delete,
                             contentDescription = "Hapus",
@@ -235,7 +291,6 @@ private fun SlotServisItemCard(
 
             Spacer(Modifier.height(8.dp))
 
-            // Status indicator
             Surface(
                 color = if (isAktif)
                     MaterialTheme.colorScheme.primaryContainer
@@ -265,7 +320,8 @@ private fun SlotFormDialog(
     initialJamSelesai: String = "",
     initialKapasitas: String = "1",
     onDismiss: () -> Unit,
-    onSimpan: (tanggal: String, jamMulai: String, jamSelesai: String, kapasitas: Int) -> Unit
+    onSimpan: (tanggal: String, jamMulai: String, jamSelesai: String, kapasitas: Int) -> Unit,
+    isLoading: Boolean = false
 ) {
     val context = LocalContext.current
     val calendar = remember { Calendar.getInstance() }
@@ -292,7 +348,7 @@ private fun SlotFormDialog(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable {
+                        .clickable(enabled = !isLoading) {
                             DatePickerDialog(
                                 context,
                                 { _, year, month, day ->
@@ -319,10 +375,7 @@ private fun SlotFormDialog(
                             { Text("Tanggal wajib diisi") }
                         } else null,
                         trailingIcon = {
-                            Icon(
-                                Icons.Default.DateRange,
-                                contentDescription = null
-                            )
+                            Icon(Icons.Default.DateRange, contentDescription = null)
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -332,13 +385,9 @@ private fun SlotFormDialog(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable {
-                            val hour = if (jamMulai.isNotBlank()) {
-                                jamMulai.split(":").getOrNull(0)?.toIntOrNull() ?: 9
-                            } else 9
-                            val minute = if (jamMulai.isNotBlank()) {
-                                jamMulai.split(":").getOrNull(1)?.toIntOrNull() ?: 0
-                            } else 0
+                        .clickable(enabled = !isLoading) {
+                            val hour = jamMulai.split(":").getOrNull(0)?.toIntOrNull() ?: 9
+                            val minute = jamMulai.split(":").getOrNull(1)?.toIntOrNull() ?: 0
 
                             TimePickerDialog(
                                 context,
@@ -362,10 +411,7 @@ private fun SlotFormDialog(
                             { Text("Jam mulai wajib diisi") }
                         } else null,
                         trailingIcon = {
-                            Icon(
-                                Icons.Default.Schedule,
-                                contentDescription = null
-                            )
+                            Icon(Icons.Default.Schedule, contentDescription = null)
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -375,13 +421,9 @@ private fun SlotFormDialog(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable {
-                            val hour = if (jamSelesai.isNotBlank()) {
-                                jamSelesai.split(":").getOrNull(0)?.toIntOrNull() ?: 10
-                            } else 10
-                            val minute = if (jamSelesai.isNotBlank()) {
-                                jamSelesai.split(":").getOrNull(1)?.toIntOrNull() ?: 0
-                            } else 0
+                        .clickable(enabled = !isLoading) {
+                            val hour = jamSelesai.split(":").getOrNull(0)?.toIntOrNull() ?: 10
+                            val minute = jamSelesai.split(":").getOrNull(1)?.toIntOrNull() ?: 0
 
                             TimePickerDialog(
                                 context,
@@ -411,10 +453,7 @@ private fun SlotFormDialog(
                             else -> null
                         },
                         trailingIcon = {
-                            Icon(
-                                Icons.Default.Schedule,
-                                contentDescription = null
-                            )
+                            Icon(Icons.Default.Schedule, contentDescription = null)
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -434,20 +473,19 @@ private fun SlotFormDialog(
                     } else null,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    enabled = !isLoading
                 )
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
-                    // Validasi
                     tanggalError = tanggal.isBlank()
                     jamMulaiError = jamMulai.isBlank()
                     jamSelesaiError = jamSelesai.isBlank()
                     kapasitasError = kapasitas.toIntOrNull() == null || kapasitas.toInt() <= 0
 
-                    // Validasi waktu: jam selesai harus > jam mulai
                     waktuError = if (jamMulai.isNotBlank() && jamSelesai.isNotBlank()) {
                         jamSelesai <= jamMulai
                     } else {
@@ -458,19 +496,19 @@ private fun SlotFormDialog(
                         return@TextButton
                     }
 
-                    onSimpan(
-                        tanggal,
-                        jamMulai,
-                        jamSelesai,
-                        kapasitas.toInt()
-                    )
-                }
+                    onSimpan(tanggal, jamMulai, jamSelesai, kapasitas.toInt())
+                },
+                enabled = !isLoading
             ) {
-                Text("Simpan")
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                } else {
+                    Text("Simpan")
+                }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, enabled = !isLoading) {
                 Text("Batal")
             }
         }

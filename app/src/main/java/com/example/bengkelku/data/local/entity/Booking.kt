@@ -5,6 +5,12 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+/**
+ * Booking entity - stores bookings from backend
+ * PrimaryKey is from backend (not autoGenerate)
+ * 
+ * ForeignKeys reference parent tables that MUST exist before insert
+ */
 @Entity(
     tableName = "booking",
     foreignKeys = [
@@ -24,13 +30,13 @@ import androidx.room.PrimaryKey
             entity = Servis::class,
             parentColumns = ["id"],
             childColumns = ["servisId"],
-            onDelete = ForeignKey.RESTRICT
+            onDelete = ForeignKey.CASCADE  // Changed from RESTRICT to CASCADE
         ),
         ForeignKey(
             entity = SlotServis::class,
             parentColumns = ["id"],
             childColumns = ["slotServisId"],
-            onDelete = ForeignKey.RESTRICT
+            onDelete = ForeignKey.CASCADE  // Changed from RESTRICT to CASCADE
         )
     ],
     indices = [
@@ -42,8 +48,8 @@ import androidx.room.PrimaryKey
 )
 data class Booking(
 
-    @PrimaryKey(autoGenerate = true)
-    val id: Int = 0,
+    @PrimaryKey
+    val id: Int,  // From backend, not autoGenerate
 
     val penggunaId: Int,      // Pelanggan yang booking
 
@@ -53,23 +59,36 @@ data class Booking(
 
     val slotServisId: Int,    // Slot waktu servis
 
-    val tanggalServis: String, // Format: yyyy-MM-dd
+    val tanggalServis: String, // Format: yyyy-MM-dd (from slot_servis.tanggal)
 
-    val jamServis: String,     // Format: HH:mm
+    val jamServis: String,     // Format: HH:mm (from slot_servis.jam_mulai)
 
-    val nomorAntrian: String,
+    val nomorAntrian: Int,     // Changed from String to Int (matches backend)
 
     val status: StatusBooking = StatusBooking.MENUNGGU,
 
-    val totalBiaya: Int
+    val totalBiaya: Int        // From jenis_servis.harga
 )
 
 /**
  * Status pengerjaan booking servis
+ * Must match backend status values
  */
 enum class StatusBooking {
     MENUNGGU,
     DIPROSES,
     SELESAI,
-    DIAMBIL
+    DIBATALKAN;  // Changed from DIAMBIL to match backend
+    
+    companion object {
+        fun fromString(value: String): StatusBooking {
+            return when (value.uppercase()) {
+                "MENUNGGU" -> MENUNGGU
+                "DIPROSES" -> DIPROSES
+                "SELESAI" -> SELESAI
+                "DIBATALKAN" -> DIBATALKAN
+                else -> MENUNGGU
+            }
+        }
+    }
 }

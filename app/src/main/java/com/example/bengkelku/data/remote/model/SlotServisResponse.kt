@@ -4,20 +4,23 @@ import com.google.gson.annotations.SerializedName
 
 data class SlotServisResponse(
     @SerializedName("id")
-    val id: Int,
+    val id: Int = 0,
 
     @SerializedName("tanggal")
-    val tanggal: String,
+    val tanggal: String = "",
 
     @SerializedName("jam_mulai")
-    val jamMulai: String,
+    val jamMulai: String = "",
 
     @SerializedName("jam_selesai")
-    val jamSelesai: String,
+    val jamSelesai: String = "",
 
     @SerializedName("kapasitas")
-    val kapasitas: Int,
+    val kapasitas: Int = 0,
 
     @SerializedName("terpakai")
-    val terpakai: Int
+    val terpakai: Int = 0,
+
+    @SerializedName("status")
+    val status: String = "available"
 )

@@ -5,6 +5,10 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+/**
+ * Kendaraan entity - stores vehicles from backend
+ * PrimaryKey is from backend (not autoGenerate)
+ */
 @Entity(
     tableName = "kendaraan",
     foreignKeys = [
@@ -23,8 +27,8 @@ import androidx.room.PrimaryKey
 )
 data class Kendaraan(
 
-    @PrimaryKey(autoGenerate = true)
-    val id: Int = 0,
+    @PrimaryKey
+    val id: Int,  // From backend, not autoGenerate
 
     val penggunaId: Int,      // Pemilik kendaraan (pelanggan)
 
@@ -34,5 +38,7 @@ data class Kendaraan(
 
     val nomorPlat: String,
 
-    val tahun: Int? = null
+    val tahun: Int? = null,
+    
+    val warna: String? = null
 )

@@ -3,6 +3,7 @@ package com.example.bengkelku.data.local.dao
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.example.bengkelku.data.local.entity.SlotServis
@@ -11,14 +12,20 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface SlotServisDao {
 
-    @Insert
-    suspend fun insert(slotServis: SlotServis)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(slotServis: SlotServis)
+    
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(slotList: List<SlotServis>)
 
     @Update
     suspend fun update(slotServis: SlotServis)
 
     @Delete
     suspend fun delete(slotServis: SlotServis)
+    
+    @Query("DELETE FROM slot_servis WHERE id = :id")
+    suspend fun deleteById(id: Int)
 
     @Query("""
         SELECT * FROM slot_servis
@@ -61,6 +68,7 @@ interface SlotServisDao {
         SELECT * FROM slot_servis
         WHERE tanggal >= :today
           AND kapasitas > terpakai
+          AND status = 'available'
         ORDER BY tanggal ASC, jamMulai ASC
     """)
     fun getAvailableSlots(today: String): Flow<List<SlotServis>>

@@ -4,34 +4,34 @@ import com.google.gson.annotations.SerializedName
 
 data class BookingResponse(
     @SerializedName("id")
-    val id: Int,
+    val id: Int = 0,
 
-    @SerializedName("pengguna_id")
-    val penggunaId: Int,
+    @SerializedName("user_id")
+    val userId: Int = 0,
 
     @SerializedName("kendaraan_id")
-    val kendaraanId: Int,
+    val kendaraanId: Int = 0,
 
-    @SerializedName("servis_id")
-    val servisId: Int,
+    @SerializedName("jenis_servis_id")
+    val jenisServisId: Int = 0,
 
     @SerializedName("slot_servis_id")
-    val slotServisId: Int,
+    val slotServisId: Int = 0,
 
     @SerializedName("tanggal_servis")
-    val tanggalServis: String,
+    val tanggalServis: String = "",
 
     @SerializedName("jam_servis")
-    val jamServis: String,
+    val jamServis: String = "",
 
     @SerializedName("nomor_antrian")
-    val nomorAntrian: String,
+    val nomorAntrian: Int = 0,
 
     @SerializedName("status")
-    val status: String,
+    val status: String = "",
 
     @SerializedName("total_biaya")
-    val totalBiaya: Int,
+    val totalBiaya: Int = 0,
 
     // Optional joined data from backend
     @SerializedName("nama_pengguna")

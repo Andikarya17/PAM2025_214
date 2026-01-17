@@ -19,7 +19,13 @@ class RegisterViewModel(
         username: String,
         password: String
     ) {
-        if (nama.isBlank() || username.isBlank() || password.isBlank()) {
+        // Trim inputs to prevent whitespace issues
+        val cleanNama = nama.trim()
+        val cleanUsername = username.trim()
+        val cleanPassword = password.trim()
+
+        // Validasi input
+        if (cleanNama.isBlank() || cleanUsername.isBlank() || cleanPassword.isBlank()) {
             _uiState.value = RegisterUiState.Error("Semua field wajib diisi")
             return
         }
@@ -27,16 +33,25 @@ class RegisterViewModel(
         viewModelScope.launch {
             _uiState.value = RegisterUiState.Loading
 
-            val berhasil = repositoryAuth.register(
-                nama = nama,
-                username = username,
-                password = password
-            )
+            try {
+                // ===== REGISTER VIA API (MYSQL) =====
+                val response = repositoryAuth.registerApi(
+                    nama = cleanNama,
+                    username = cleanUsername,
+                    password = cleanPassword
+                )
 
-            if (berhasil) {
-                _uiState.value = RegisterUiState.Success
-            } else {
-                _uiState.value = RegisterUiState.Error("Username sudah digunakan")
+                if (response.isSuccess) {
+                    _uiState.value = RegisterUiState.Success
+                } else {
+                    _uiState.value = RegisterUiState.Error(
+                        response.getMessageOrDefault("Register gagal")
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.value = RegisterUiState.Error(
+                    e.message ?: "Terjadi kesalahan koneksi"
+                )
             }
         }
     }

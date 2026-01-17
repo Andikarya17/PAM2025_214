@@ -4,20 +4,23 @@ import com.google.gson.annotations.SerializedName
 
 data class KendaraanResponse(
     @SerializedName("id")
-    val id: Int,
+    val id: Int = 0,
 
-    @SerializedName("pengguna_id")
-    val penggunaId: Int,
+    @SerializedName("user_id")
+    val userId: Int = 0,
 
     @SerializedName("merk")
-    val merk: String,
+    val merk: String = "",
 
     @SerializedName("model")
-    val model: String,
+    val model: String = "",
 
     @SerializedName("nomor_plat")
-    val nomorPlat: String,
+    val nomorPlat: String = "",
 
     @SerializedName("tahun")
-    val tahun: Int?
+    val tahun: Int? = null,
+
+    @SerializedName("warna")
+    val warna: String? = null
 )

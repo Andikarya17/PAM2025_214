@@ -1,92 +1,195 @@
 package com.example.bengkelku.data.repository
 
+import android.util.Log
 import com.example.bengkelku.data.local.dao.BookingDao
 import com.example.bengkelku.data.local.dao.BookingWithDetails
 import com.example.bengkelku.data.local.entity.Booking
-import com.example.bengkelku.data.remote.ApiResponse
+import com.example.bengkelku.data.local.entity.StatusBooking
 import com.example.bengkelku.data.remote.ApiService
 import com.example.bengkelku.data.remote.model.BookingResponse
 import kotlinx.coroutines.flow.Flow
+
+private const val TAG = "RepositoryBooking"
 
 class RepositoryBooking(
     private val bookingDao: BookingDao,
     private val apiService: ApiService
 ) {
 
-    // ===== LOCAL (Room) =====
+    // ===== LOCAL (Room) - Secondary/Cache =====
 
-    suspend fun buatBooking(booking: Booking) {
-        bookingDao.insert(booking)
+    suspend fun upsertLocal(booking: Booking) {
+        bookingDao.upsert(booking)
     }
 
-    suspend fun updateBooking(booking: Booking) {
+    suspend fun upsertAllLocal(bookings: List<Booking>) {
+        bookingDao.upsertAll(bookings)
+    }
+
+    suspend fun updateLocal(booking: Booking) {
         bookingDao.update(booking)
     }
 
-    suspend fun hapusBooking(booking: Booking) {
+    suspend fun deleteLocal(booking: Booking) {
         bookingDao.delete(booking)
     }
 
-    fun getBookingAktifPengguna(penggunaId: Int): Flow<List<Booking>> {
+    fun getBookingAktifPenggunaLocal(penggunaId: Int): Flow<List<Booking>> {
         return bookingDao.getBookingAktif(penggunaId)
     }
 
-    fun getRiwayatBookingPengguna(penggunaId: Int): Flow<List<Booking>> {
+    fun getRiwayatBookingPenggunaLocal(penggunaId: Int): Flow<List<Booking>> {
         return bookingDao.getRiwayatBooking(penggunaId)
     }
 
-    fun getSemuaBooking(): Flow<List<Booking>> {
+    fun getBookingByPenggunaLocal(penggunaId: Int): Flow<List<Booking>> {
+        return bookingDao.getBookingByPengguna(penggunaId)
+    }
+
+    fun getSemuaBookingLocal(): Flow<List<Booking>> {
         return bookingDao.getAllBooking()
     }
 
-    fun getSemuaBookingWithDetails(): Flow<List<BookingWithDetails>> {
+    fun getSemuaBookingWithDetailsLocal(): Flow<List<BookingWithDetails>> {
         return bookingDao.getAllBookingWithDetails()
     }
 
-    suspend fun getBookingById(bookingId: Int): Booking? {
+    suspend fun getBookingByIdLocal(bookingId: Int): Booking? {
         return bookingDao.getBookingById(bookingId)
     }
 
-    // ===== REMOTE (API) =====
-
-    suspend fun getBookingAktifApi(penggunaId: Int): ApiResponse<List<BookingResponse>> {
-        return apiService.getBookingAktif(penggunaId)
+    suspend fun deleteAllLocal() {
+        bookingDao.deleteAll()
     }
 
-    suspend fun getRiwayatBookingApi(penggunaId: Int): ApiResponse<List<BookingResponse>> {
-        return apiService.getRiwayatBooking(penggunaId)
+    // ===== REMOTE (API) - Primary Source =====
+
+    /**
+     * Get customer bookings from API.
+     */
+    suspend fun getBookingCustomerApi(userId: Int): Result<List<BookingResponse>> {
+        return try {
+            val response = apiService.getBookingCustomer(userId)
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.isSuccess) {
+                    Result.success(body.data ?: emptyList())
+                } else {
+                    Result.failure(Exception(body?.getMessageOrDefault("Gagal memuat booking") ?: "Response kosong"))
+                }
+            } else {
+                Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Terjadi kesalahan jaringan"))
+        }
     }
 
-    suspend fun getAllBookingApi(): ApiResponse<List<BookingResponse>> {
-        return apiService.getAllBooking()
+    /**
+     * Get all bookings (admin) from API.
+     */
+    suspend fun getAllBookingApi(): Result<List<BookingResponse>> {
+        return try {
+            val response = apiService.getAllBooking()
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.isSuccess) {
+                    Result.success(body.data ?: emptyList())
+                } else {
+                    Result.failure(Exception(body?.getMessageOrDefault("Gagal memuat booking") ?: "Response kosong"))
+                }
+            } else {
+                Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Terjadi kesalahan jaringan"))
+        }
     }
 
+    /**
+     * Create booking via API.
+     */
     suspend fun createBookingApi(
-        penggunaId: Int,
+        userId: Int,
         kendaraanId: Int,
-        servisId: Int,
-        slotServisId: Int,
-        tanggalServis: String,
-        jamServis: String,
-        nomorAntrian: String,
-        totalBiaya: Int
-    ): ApiResponse<BookingResponse> {
-        return apiService.createBooking(
-            penggunaId,
-            kendaraanId,
-            servisId,
-            slotServisId,
-            tanggalServis,
-            jamServis,
-            nomorAntrian,
-            totalBiaya
+        jenisServisId: Int,
+        slotServisId: Int
+    ): Result<BookingResponse> {
+        Log.d(TAG, "createBookingApi called: userId=$userId, kendaraanId=$kendaraanId, jenisServisId=$jenisServisId, slotServisId=$slotServisId")
+        return try {
+            val response = apiService.createBooking(
+                userId,
+                kendaraanId,
+                jenisServisId,
+                slotServisId
+            )
+            Log.d(TAG, "createBookingApi response: code=${response.code()}, isSuccessful=${response.isSuccessful}")
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.isSuccess && body.data != null) {
+                    Log.d(TAG, "createBookingApi SUCCESS: bookingId=${body.data.id}, status=${body.data.status}")
+                    Result.success(body.data)
+                } else {
+                    val errorMsg = body?.getMessageOrDefault("Gagal membuat booking") ?: "Response kosong"
+                    Log.e(TAG, "createBookingApi FAILED: $errorMsg")
+                    Result.failure(Exception(errorMsg))
+                }
+            } else {
+                val errorBody = response.errorBody()?.string() ?: "No error body"
+                Log.e(TAG, "createBookingApi HTTP ERROR: ${response.code()} - $errorBody")
+                Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "createBookingApi EXCEPTION: ${e.message}", e)
+            Result.failure(Exception(e.message ?: "Terjadi kesalahan jaringan"))
+        }
+    }
+
+    /**
+     * Update booking status via API.
+     */
+    suspend fun updateBookingStatusApi(id: Int, status: String): Result<String> {
+        return try {
+            val response = apiService.updateBookingStatus(id, status)
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null && body.isSuccess) {
+                    Result.success(body.getMessageOrDefault("Status berhasil diperbarui"))
+                } else {
+                    Result.failure(Exception(body?.getMessageOrDefault("Gagal memperbarui status") ?: "Response kosong"))
+                }
+            } else {
+                Result.failure(Exception("HTTP ${response.code()}: ${response.message()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(e.message ?: "Terjadi kesalahan jaringan"))
+        }
+    }
+
+    // ===== CONVERTERS =====
+
+    /**
+     * Convert BookingResponse to Booking entity for local storage.
+     */
+    fun bookingResponseToEntity(response: BookingResponse): Booking {
+        return Booking(
+            id = response.id,
+            penggunaId = response.userId,
+            kendaraanId = response.kendaraanId,
+            servisId = response.jenisServisId,
+            slotServisId = response.slotServisId,
+            tanggalServis = response.tanggalServis,
+            jamServis = response.jamServis,
+            nomorAntrian = response.nomorAntrian,
+            status = StatusBooking.fromString(response.status),
+            totalBiaya = response.totalBiaya
         )
     }
 
-    suspend fun updateBookingStatusApi(
-        id: Int,
-        status: String
-    ): ApiResponse<BookingResponse> {
-        return apiService.updateBookingStatus(id, status)
+    /**
+     * Convert list of BookingResponse to list of Booking entities.
+     */
+    fun bookingResponseListToEntities(responses: List<BookingResponse>): List<Booking> {
+        return responses.map { bookingResponseToEntity(it) }
     }
 }

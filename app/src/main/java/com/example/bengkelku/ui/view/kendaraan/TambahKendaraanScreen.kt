@@ -5,7 +5,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.bengkelku.data.local.entity.Kendaraan
 import com.example.bengkelku.ui.view.components.BaseScaffold
 import com.example.bengkelku.viewmodel.kendaraan.AksiKendaraanState
 import com.example.bengkelku.viewmodel.kendaraan.KendaraanViewModel
@@ -24,6 +23,7 @@ fun TambahKendaraanScreen(
 
     val aksiState by viewModel.aksiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val isLoading = aksiState is AksiKendaraanState.Loading
 
     // Handle state changes
     LaunchedEffect(aksiState) {
@@ -59,51 +59,63 @@ fun TambahKendaraanScreen(
                     value = merk,
                     onValueChange = { merk = it },
                     label = { Text("Merk") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoading
                 )
+
+                Spacer(Modifier.height(8.dp))
 
                 OutlinedTextField(
                     value = model,
                     onValueChange = { model = it },
                     label = { Text("Model") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoading
                 )
+
+                Spacer(Modifier.height(8.dp))
 
                 OutlinedTextField(
                     value = nomorPlat,
                     onValueChange = { nomorPlat = it.uppercase() },
                     label = { Text("Nomor Plat") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoading
                 )
+
+                Spacer(Modifier.height(8.dp))
 
                 OutlinedTextField(
                     value = tahun,
-                    onValueChange = { tahun = it },
+                    onValueChange = { tahun = it.filter { c -> c.isDigit() } },
                     label = { Text("Tahun (opsional)") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoading
                 )
 
                 Spacer(Modifier.height(16.dp))
 
                 Button(
                     onClick = {
-                        if (merk.isBlank() || model.isBlank() || nomorPlat.isBlank()) {
-                            return@Button
-                        }
-
-                        val kendaraan = Kendaraan(
-                            penggunaId = penggunaId,
-                            merk = merk.trim(),
-                            model = model.trim(),
-                            nomorPlat = nomorPlat.trim().uppercase(),
+                        viewModel.tambahKendaraan(
+                            merk = merk,
+                            model = model,
+                            nomorPlat = nomorPlat,
                             tahun = tahun.toIntOrNull()
                         )
-                        viewModel.tambahKendaraan(kendaraan)
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = merk.isNotBlank() && model.isNotBlank() && nomorPlat.isNotBlank()
+                    enabled = merk.isNotBlank() && model.isNotBlank() && nomorPlat.isNotBlank() && !isLoading
                 ) {
-                    Text("Simpan")
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text(if (isLoading) "Menyimpan..." else "Simpan")
                 }
             }
         }
